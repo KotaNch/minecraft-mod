@@ -1,8 +1,10 @@
 package com.example.client;
 
+import com.example.LockTogglePayload;
+import com.example.ModComponents;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.minecraft.client.MinecraftClient;
@@ -21,15 +23,15 @@ public class InventorySortModClient implements ClientModInitializer {
 
 
 	public static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of("inventory-sort-mod", "main"));
-	public static KeyBinding sortKeyBinding;
+	public static KeyBinding moveKeyBinding;
 	public static KeyBinding lockKeyBinding;
 
 	@Override
 	public void onInitializeClient() {
 		ModComponents.LOCKED.toString(); //init kostil TODO: normal init
 
-		sortKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-				"key.inventory-sort-mod.sort",
+		moveKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.inventory-sort-mod.move",
 				InputUtil.Type.KEYSYM,
 				GLFW.GLFW_KEY_G,
 				CATEGORY
@@ -45,20 +47,22 @@ public class InventorySortModClient implements ClientModInitializer {
 		ScreenEvents.AFTER_INIT.register(((client, screen, scaledWidth, scaledHeight) -> {
 			if (screen instanceof GenericContainerScreen containerScreen){
 				ScreenKeyboardEvents.afterKeyPress(screen).register((scr,keyInput) -> {
-					if (keyInput.key() == sortKeyBinding.getDefaultKey().getCode()){
-						ScreenHandler handler = containerScreen.getScreenHandler();
-//						System.out.println("Chest opened, number of slots: " + handler.slots.size());
-						sortIntoChest(client,handler);
+					ScreenHandler handler = containerScreen.getScreenHandler();
+					if (keyInput.key() == KeyBindingHelper.getBoundKeyOf(moveKeyBinding).getCode() && (keyInput.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0){
+						moveIntoInventory(client,handler);
 					}
-					if (keyInput.key() == lockKeyBinding.getDefaultKey().getCode()){
-						toggleLock(containerScreen);
+					if (keyInput.key() == KeyBindingHelper.getBoundKeyOf(moveKeyBinding).getCode() && (keyInput.modifiers() & GLFW.GLFW_MOD_SHIFT) == 0){
+						moveIntoChest(client,handler);
+					}
+					if (keyInput.key() ==  KeyBindingHelper.getBoundKeyOf(lockKeyBinding).getCode()){
+						toggleLock(containerScreen, handler);
 					}
 				});
 			}
 		}));
 	}
 
-	private void sortIntoChest(MinecraftClient client, ScreenHandler handler){
+	private void moveIntoChest(MinecraftClient client, ScreenHandler handler){
 		int totalSlots = handler.slots.size();
 		int playerInvSize = client.player.getInventory().getMainStacks().size();
 		int firstPlslot = totalSlots - playerInvSize;
@@ -89,16 +93,37 @@ public class InventorySortModClient implements ClientModInitializer {
 		}
 	}
 
-	private void toggleLock(HandledScreen<?> screen){
+	private void moveIntoInventory(MinecraftClient client, ScreenHandler handler){
+		int totalSlots = handler.slots.size();
+		int chestInvSize = totalSlots- client.player.getInventory().getMainStacks().size();
+
+		for (int i = chestInvSize-1; i>= 0;i --){
+			Slot slot = handler.slots.get(i);
+			ItemStack stack = slot.getStack();
+
+			if (stack.isEmpty()){
+				continue;
+			}
+
+			client.interactionManager.clickSlot(
+					handler.syncId,
+					slot.id,
+					0,
+					SlotActionType.QUICK_MOVE,
+					client.player
+			);
+		}
+
+	}
+
+
+	private void toggleLock(HandledScreen<?> screen, ScreenHandler handler){
 		Slot hovered = screen.focusedSlot;
 
 		if (hovered == null || hovered.getStack().isEmpty()){
 			return;
 		}
-		ItemStack stack = hovered.getStack();
-		boolean currentlyLocked = stack.getOrDefault(ModComponents.LOCKED,false);
 
-		stack.set(ModComponents.LOCKED, !currentlyLocked);
-		System.out.println("Item locked = " + !currentlyLocked);
+		ClientPlayNetworking.send(new LockTogglePayload(handler.syncId, hovered.id));
 	}
 }
