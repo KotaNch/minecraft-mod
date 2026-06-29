@@ -8,8 +8,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.item.ItemStack;
@@ -46,7 +48,7 @@ public class InventorySortModClient implements ClientModInitializer {
 		));
 
 		ScreenEvents.AFTER_INIT.register(((client, screen, scaledWidth, scaledHeight) -> {
-			if (screen instanceof GenericContainerScreen containerScreen){
+			if (screen instanceof HandledScreen<?>  containerScreen && !(screen instanceof InventoryScreen) && !(screen instanceof CreativeInventoryScreen)){
 				ScreenKeyboardEvents.afterKeyPress(screen).register((scr,keyInput) -> {
 					ScreenHandler handler = containerScreen.getScreenHandler();
 					if (keyInput.key() == KeyBindingHelper.getBoundKeyOf(moveKeyBinding).getCode() && (keyInput.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0){
