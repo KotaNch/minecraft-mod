@@ -19,6 +19,9 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class InventorySortModClient implements ClientModInitializer {
 
 
@@ -67,8 +70,31 @@ public class InventorySortModClient implements ClientModInitializer {
 		int playerInvSize = client.player.getInventory().getMainStacks().size();
 		int firstPlslot = totalSlots - playerInvSize;
 
-		for (int i = totalSlots - 1; i >= firstPlslot;i--){
-			Slot slot = handler.slots.get(i);
+		List<Slot> playerSlots = new ArrayList<>();
+		for (int i = firstPlslot; i < totalSlots; i ++){
+			playerSlots.add(handler.slots.get(i));
+		}
+
+		playerSlots.sort((a,b) ->{
+			ItemStack stackA = a.getStack();
+			ItemStack stackB = b.getStack();
+
+			if (stackA.isEmpty() && stackB.isEmpty()){
+				return 0;
+			}
+			if (stackA.isEmpty()){
+				return  1;
+			}
+			if (stackB.isEmpty()){
+				return  -1;
+			}
+
+			String nameA = stackA.getItemName().toString();
+			String nameB = stackB.getItemName().toString();
+			return nameA.compareTo(nameB);
+		});
+
+		for (Slot slot:playerSlots){
 			ItemStack stack = slot.getStack();
 
 			if (stack.isEmpty()){
