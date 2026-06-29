@@ -21,15 +21,15 @@ public class InventorySortModClient implements ClientModInitializer {
 
 
 	public static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of("inventory-sort-mod", "main"));
-	public static KeyBinding sortKeyBinding;
+	public static KeyBinding moveKeyBinding;
 	public static KeyBinding lockKeyBinding;
 
 	@Override
 	public void onInitializeClient() {
 		ModComponents.LOCKED.toString(); //init kostil TODO: normal init
 
-		sortKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-				"key.inventory-sort-mod.sort",
+		moveKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.inventory-sort-mod.move",
 				InputUtil.Type.KEYSYM,
 				GLFW.GLFW_KEY_G,
 				CATEGORY
@@ -45,10 +45,13 @@ public class InventorySortModClient implements ClientModInitializer {
 		ScreenEvents.AFTER_INIT.register(((client, screen, scaledWidth, scaledHeight) -> {
 			if (screen instanceof GenericContainerScreen containerScreen){
 				ScreenKeyboardEvents.afterKeyPress(screen).register((scr,keyInput) -> {
-					if (keyInput.key() == sortKeyBinding.getDefaultKey().getCode()){
+					if (keyInput.key() == moveKeyBinding.getDefaultKey().getCode()  && (keyInput.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0){
 						ScreenHandler handler = containerScreen.getScreenHandler();
-//						System.out.println("Chest opened, number of slots: " + handler.slots.size());
-						sortIntoChest(client,handler);
+						moveIntoInventory(client,handler);
+					}
+					if (keyInput.key() == moveKeyBinding.getDefaultKey().getCode() && (keyInput.modifiers() & GLFW.GLFW_MOD_SHIFT) == 0){
+						ScreenHandler handler = containerScreen.getScreenHandler();
+						moveIntoChest(client,handler);
 					}
 					if (keyInput.key() == lockKeyBinding.getDefaultKey().getCode()){
 						toggleLock(containerScreen);
@@ -58,7 +61,7 @@ public class InventorySortModClient implements ClientModInitializer {
 		}));
 	}
 
-	private void sortIntoChest(MinecraftClient client, ScreenHandler handler){
+	private void moveIntoChest(MinecraftClient client, ScreenHandler handler){
 		int totalSlots = handler.slots.size();
 		int playerInvSize = client.player.getInventory().getMainStacks().size();
 		int firstPlslot = totalSlots - playerInvSize;
@@ -88,6 +91,31 @@ public class InventorySortModClient implements ClientModInitializer {
 
 		}
 	}
+
+	private void moveIntoInventory(MinecraftClient client, ScreenHandler handler){
+		int totalSlots = handler.slots.size();
+		int chestInvSize = totalSlots- client.player.getInventory().getMainStacks().size();
+
+		for (int i = chestInvSize-1; i>= 0;i --){
+			Slot slot = handler.slots.get(i);
+			ItemStack stack = slot.getStack();
+
+			if (stack.isEmpty()){
+				continue;
+			}
+
+			client.interactionManager.clickSlot(
+					handler.syncId,
+					slot.id,
+					0,
+					SlotActionType.QUICK_MOVE,
+					client.player
+			);
+			System.out.println("slot number: " + i);
+		}
+
+	}
+
 
 	private void toggleLock(HandledScreen<?> screen){
 		Slot hovered = screen.focusedSlot;
