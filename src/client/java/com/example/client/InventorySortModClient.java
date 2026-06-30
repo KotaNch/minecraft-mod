@@ -8,8 +8,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.item.ItemStack;
@@ -18,6 +20,9 @@ import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class InventorySortModClient implements ClientModInitializer {
 
@@ -28,8 +33,6 @@ public class InventorySortModClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		ModComponents.LOCKED.toString(); //init kostil TODO: normal init
-
 		moveKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.inventory-sort-mod.move",
 				InputUtil.Type.KEYSYM,
@@ -45,7 +48,7 @@ public class InventorySortModClient implements ClientModInitializer {
 		));
 
 		ScreenEvents.AFTER_INIT.register(((client, screen, scaledWidth, scaledHeight) -> {
-			if (screen instanceof GenericContainerScreen containerScreen){
+			if (screen instanceof HandledScreen<?>  containerScreen && !(screen instanceof InventoryScreen) && !(screen instanceof CreativeInventoryScreen)){
 				ScreenKeyboardEvents.afterKeyPress(screen).register((scr,keyInput) -> {
 					ScreenHandler handler = containerScreen.getScreenHandler();
 					if (keyInput.key() == KeyBindingHelper.getBoundKeyOf(moveKeyBinding).getCode() && (keyInput.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0){
@@ -67,8 +70,31 @@ public class InventorySortModClient implements ClientModInitializer {
 		int playerInvSize = client.player.getInventory().getMainStacks().size();
 		int firstPlslot = totalSlots - playerInvSize;
 
-		for (int i = totalSlots - 1; i >= firstPlslot;i--){
-			Slot slot = handler.slots.get(i);
+		List<Slot> playerSlots = new ArrayList<>();
+		for (int i = firstPlslot; i < totalSlots; i ++){
+			playerSlots.add(handler.slots.get(i));
+		}
+
+		playerSlots.sort((a,b) ->{
+			ItemStack stackA = a.getStack();
+			ItemStack stackB = b.getStack();
+
+			if (stackA.isEmpty() && stackB.isEmpty()){
+				return 0;
+			}
+			if (stackA.isEmpty()){
+				return  1;
+			}
+			if (stackB.isEmpty()){
+				return  -1;
+			}
+
+			String nameA = stackA.getItemName().toString();
+			String nameB = stackB.getItemName().toString();
+			return nameA.compareTo(nameB);
+		});
+
+		for (Slot slot:playerSlots){
 			ItemStack stack = slot.getStack();
 
 			if (stack.isEmpty()){
