@@ -14,19 +14,26 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(HandledScreen.class)
 public class HandledScreenMixin {
 
-    private static final Identifier LOCK_OVERLAY = Identifier.of("inventory-sort-mod", "gui/lock_overlay");
+
+
+    private static final Identifier BG_TEXTURE = Identifier.of("inventory-sort-mod","gui/star_bg");
+    private static final Identifier ICON_TEXTURE = Identifier.of(
+            "inventory-sort-mod","gui/lock_icon");
+
     @Inject(method = "drawSlot", at = @At("HEAD"))
-    private void drawLockOverlay(DrawContext context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+    private void drawLockBackground(DrawContext context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        if (!isLocked(slot)) return;
+        context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, BG_TEXTURE, slot.x-1, slot.y-1, 18, 18, 0x80FFFFFF);
+    }
 
-        if (slot.getStack().isEmpty()) {
-            return;
-        }
+    @Inject(method = "drawSlot", at = @At("TAIL"))
+    private void drawLockIcon(DrawContext context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        if (!isLocked(slot)) return;
+        context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, ICON_TEXTURE, slot.x-10, slot.y-10, 18, 16);
+    }
 
-        boolean locked = slot.getStack().getOrDefault(ModComponents.LOCKED, false);
-        if (!locked) {
-            return;
-        }
-
-        context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, LOCK_OVERLAY, slot.x-1, slot.y-1, 18, 18, 0x80FFFFFF);
+    private boolean isLocked(Slot slot) {
+        if (slot.getStack().isEmpty()) return false;
+        return slot.getStack().getOrDefault(ModComponents.LOCKED, false);
     }
 }
